@@ -466,15 +466,17 @@
         </button>
     </div>
 
+    <!-- DETAIL SCREEN MET TERUGKNOP EN TITEL ONDER ELKAAR -->
     <div id="detailScreen" class="screen">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 8px;">
-            <button type="button" class="secondary" id="backToFolderBtn" style="padding: 10px 14px;">← Terug</button>
-            <h2 id="currentListTitle" style="margin: 0; font-size: 18px; text-align: center; flex: 1; padding: 0 5px;">Lijst</h2>
-            
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span id="currentListStatus" class="badge openstaand">Openstaand</span>
-                <div id="topActionContainer"></div>
+        <div style="display: flex; flex-direction: column; margin-bottom: 15px; gap: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <button type="button" class="secondary" id="backToFolderBtn" style="padding: 8px 14px; font-size: 14px;">← Terug</button>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span id="currentListStatus" class="badge openstaand">Openstaand</span>
+                    <div id="topActionContainer"></div>
+                </div>
             </div>
+            <h2 id="currentListTitle" style="margin: 0; font-size: 20px;">Lijst</h2>
         </div>
 
         <div id="inputSection" style="margin-bottom: 10px; flex-shrink: 0;">
@@ -568,7 +570,6 @@
         { name: 'Zilver', hex: '#9ca3af' }
     ];
 
-    // VASTE OPSLAG-SLEUTEL (voorkomt dat data verdwijnt bij code-updates)
     const STORAGE_KEY = 'bedragLijsten_vaste_data';
 
     try {
@@ -603,7 +604,8 @@
     let selectedColorHex = '#3b82f6';
     let selectedListColorHex = '#38bdf8';
     let inputModalMode = null;
-    let draggedListId = null;
+    let draggedItemId = null;
+    let draggedItemType = null;
 
     function saveToStorage() {
         try {
@@ -626,14 +628,12 @@
         folderHeader.innerText = 'Mappen';
         container.appendChild(folderHeader);
 
-        // Toon alle mappen behalve items in de prullenbak
         const rootFolders = appData.folders.filter(f => !f.parentId && f.id !== 'prullenbak');
 
         rootFolders.forEach(folder => {
             renderFolderCardAndChildren(folder, container);
         });
 
-        // Prullenbak als speciale map onderaan de mappenlijst
         const prullenbakFolder = appData.folders.find(f => f.id === 'prullenbak');
         if (prullenbakFolder) {
             renderPrullenbakFolderCard(prullenbakFolder, container);
@@ -705,11 +705,17 @@
         standaloneZone.addEventListener('drop', (e) => {
             e.preventDefault();
             standaloneZone.classList.remove('drag-over');
-            const listIdToMove = e.dataTransfer.getData('text/plain') || draggedListId;
-            if (listIdToMove) {
-                const list = appData.lists.find(l => l.id === listIdToMove);
+            if (draggedItemType === 'list' && draggedItemId) {
+                const list = appData.lists.find(l => l.id === draggedItemId);
                 if (list) {
                     list.folderId = null;
+                    saveToStorage();
+                    renderFolders();
+                }
+            } else if (draggedItemType === 'folder' && draggedItemId) {
+                const folder = appData.folders.find(f => f.id === draggedItemId);
+                if (folder && !folder.isPermanent) {
+                    folder.parentId = null;
                     saveToStorage();
                     renderFolders();
                 }
@@ -803,7 +809,6 @@
             container.appendChild(childrenContainer);
         }
 
-        // Event listeners voor prullenbak items
         container.querySelectorAll('.restore-folder-btn').forEach(btn => {
             btn.addEventListener('click', (e) => { e.stopPropagation(); restoreItem('folder', e.currentTarget.getAttribute('data-id')); });
         });
@@ -949,7 +954,6 @@
             let diff = currentX - startX;
             if (diff < 0) {
                 bg.style.opacity = '1';
-                // Alleen halve swipe toestaan (max -70px), geen instant volledige swipe verwijdering meer!
                 card.style.transform = `translateX(${Math.max(diff, -70)}px)`;
             }
         }, { passive: true });
@@ -968,43 +972,22 @@
             }
         });
 
-        // Klik op de prullenbak achtergrond om naar prullenbak te verplaatsen
         bg.addEventListener('click', () => {
             moveToPrullenbak(type, id);
         });
 
-        if (type === 'list') {
-            card.setAttribute('draggable', 'true');
-            card.addEventListener('dragstart', (e) => {
-                draggedListId = id;
-                e.dataTransfer.setData('text/plain', id);
-
-                const dragGhost = document.createElement('div');
-                const listObj = appData.lists.find(l => l.id === id);
-                const col = listObj ? (listObj.color || '#38bdf8') : '#38bdf8';
-                
-                dragGhost.style.cssText = `
-                    width: 50px; height: 50px; background: #1a203c; border: 2px solid ${col};
-                    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: absolute; top: -1000px;
-                `;
-                dragGhost.innerHTML = `
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                    </svg>
-                `;
-                document.body.appendChild(dragGhost);
-                e.dataTransfer.setDragImage(dragGhost, 25, 25);
-                setTimeout(() => document.body.removeChild(dragGhost), 0);
-
-                card.style.opacity = '0.3';
-            });
-            card.addEventListener('dragend', () => {
-                draggedListId = null;
-                card.style.opacity = '1';
-            });
-        }
+        card.setAttribute('draggable', 'true');
+        card.addEventListener('dragstart', (e) => {
+            draggedItemId = id;
+            draggedItemType = type;
+            e.dataTransfer.setData('text/plain', id);
+            card.style.opacity = '0.3';
+        });
+        card.addEventListener('dragend', () => {
+            draggedItemId = null;
+            draggedItemType = null;
+            card.style.opacity = '1';
+        });
 
         if (type === 'folder') {
             card.addEventListener('dragover', (e) => {
@@ -1017,11 +1000,20 @@
             card.addEventListener('drop', (e) => {
                 e.preventDefault();
                 card.classList.remove('drag-over');
-                const listIdToMove = e.dataTransfer.getData('text/plain') || draggedListId;
-                if (listIdToMove) {
-                    const list = appData.lists.find(l => l.id === listIdToMove);
+                
+                if (draggedItemType === 'list' && draggedItemId) {
+                    const list = appData.lists.find(l => l.id === draggedItemId);
                     if (list) {
                         list.folderId = id;
+                        saveToStorage();
+                        if (activeFolderId) renderFolderLists();
+                        else renderFolders();
+                    }
+                } else if (draggedItemType === 'folder' && draggedItemId && draggedItemId !== id) {
+                    const folderToMove = appData.folders.find(f => f.id === draggedItemId);
+                    if (folderToMove && !folderToMove.isPermanent) {
+                        folderToMove.parentId = id;
+                        folderToMove.isExpanded = false;
                         saveToStorage();
                         if (activeFolderId) renderFolderLists();
                         else renderFolders();
