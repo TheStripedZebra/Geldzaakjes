@@ -224,6 +224,7 @@
             z-index: 1;
             opacity: 0;
             transition: opacity 0.15s ease-out;
+            cursor: pointer;
         }
 
         .folder-card, .list-card {
@@ -550,7 +551,8 @@
     let appData = {
         folders: [
             { id: 'default', name: 'Algemeen', color: '#3b82f6', isExpanded: false, parentId: null },
-            { id: 'archief', name: 'Archief', color: '#9ca3af', isExpanded: false, parentId: null }
+            { id: 'archief', name: 'Archief', color: '#9ca3af', isExpanded: false, parentId: null },
+            { id: 'prullenbak', name: 'Prullenbak', color: '#ef4444', isExpanded: false, parentId: null, isPermanent: true }
         ],
         lists: []
     };
@@ -566,20 +568,27 @@
         { name: 'Zilver', hex: '#9ca3af' }
     ];
 
+    // VASTE OPSLAG-SLEUTEL (voorkomt dat data verdwijnt bij code-updates)
+    const STORAGE_KEY = 'bedragLijsten_vaste_data';
+
     try {
-        const saved = localStorage.getItem('bedragLijsten_v42');
+        const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             appData = JSON.parse(saved);
+            if (!appData.folders.some(f => f.id === 'prullenbak')) {
+                appData.folders.push({ id: 'prullenbak', name: 'Prullenbak', color: '#ef4444', isExpanded: false, parentId: null, isPermanent: true });
+            }
             if (!appData.folders.some(f => f.id === 'archief')) {
-                appData.folders.push({ id: 'archief', name: 'Archief', color: '#9ca3af', isExpanded: false, parentId: null });
+                appData.folders.push({ id: 'archief', name: 'Archief', color: '#9ca3af', isExpanded: false, parentId: null, isPermanent: true });
             }
             if (!appData.folders.some(f => f.id === 'default')) {
-                appData.folders.unshift({ id: 'default', name: 'Algemeen', color: '#3b82f6', isExpanded: false, parentId: null });
+                appData.folders.unshift({ id: 'default', name: 'Algemeen', color: '#3b82f6', isExpanded: false, parentId: null, isPermanent: true });
             }
             appData.folders.forEach(f => { 
                 if (!f.color) f.color = '#3b82f6'; 
                 if (f.isExpanded === undefined) f.isExpanded = false;
                 if (f.parentId === undefined) f.parentId = null;
+                if (f.id === 'default' || f.id === 'archief' || f.id === 'prullenbak') f.isPermanent = true;
             });
             appData.lists.forEach(l => { if (!l.color) l.color = '#38bdf8'; });
         }
@@ -598,7 +607,7 @@
 
     function saveToStorage() {
         try {
-            localStorage.setItem('bedragLijsten_v42', JSON.stringify(appData));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
         } catch (e) {
             console.error("Fout bij opslaan:", e);
         }
@@ -617,11 +626,18 @@
         folderHeader.innerText = 'Mappen';
         container.appendChild(folderHeader);
 
-        const rootFolders = appData.folders.filter(f => !f.parentId);
+        // Toon alle mappen behalve items in de prullenbak
+        const rootFolders = appData.folders.filter(f => !f.parentId && f.id !== 'prullenbak');
 
         rootFolders.forEach(folder => {
             renderFolderCardAndChildren(folder, container);
         });
+
+        // Prullenbak als speciale map onderaan de mappenlijst
+        const prullenbakFolder = appData.folders.find(f => f.id === 'prullenbak');
+        if (prullenbakFolder) {
+            renderPrullenbakFolderCard(prullenbakFolder, container);
+        }
 
         const standaloneZone = document.createElement('div');
         standaloneZone.className = 'standalone-drop-zone';
@@ -701,8 +717,105 @@
         });
 
         container.appendChild(standaloneZone);
-
         bindHomeScreenEvents(container);
+    }
+
+    function renderPrullenbakFolderCard(folder, container) {
+        const folderLists = appData.lists.filter(l => l.folderId === folder.id);
+        const subFolders = appData.folders.filter(f => f.parentId === folder.id);
+        const totalItemsCount = folderLists.length + subFolders.length;
+
+        const folderColor = folder.color || '#ef4444';
+        const folderSvg = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${folderColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        `;
+
+        const arrowSymbol = folder.isExpanded ? arrowDownSvg : arrowRightSvg;
+
+        const cardContent = `
+            <button type="button" class="toggle-folder-btn" data-id="${folder.id}">
+                ${arrowSymbol}
+            </button>
+            <div style="flex: 1; cursor: pointer; margin-left: 4px;" class="open-folder-target" data-id="${folder.id}">
+                <strong style="font-size: 16px;">${folderSvg}<span style="color: var(--text-main);">${escapeHtml(folder.name)}</span></strong><br>
+                <small style="color: var(--text-muted);">${totalItemsCount} items</small>
+            </div>
+        `;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'swipe-wrapper';
+        const card = document.createElement('div');
+        card.className = 'folder-card';
+        card.innerHTML = cardContent;
+        wrapper.appendChild(card);
+        container.appendChild(wrapper);
+
+        if (folder.isExpanded) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'folder-children-container';
+
+            if (totalItemsCount === 0) {
+                childrenContainer.innerHTML = '<p style="font-size: 12px; color: var(--text-muted); margin: 6px 0;">Prullenbak is leeg.</p>';
+            } else {
+                subFolders.forEach(sub => {
+                    const subContent = `
+                        <div style="flex: 1;">
+                            <strong style="font-size: 14px; color: var(--text-main);">${escapeHtml(sub.name)}</strong><br>
+                            <small style="color: var(--text-muted);">Verwijderde map</small>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="success restore-folder-btn" data-id="${sub.id}" style="padding: 4px 8px; font-size: 11px;">Herstel</button>
+                            <button type="button" class="danger perm-delete-folder-btn" data-id="${sub.id}" style="padding: 4px 8px; font-size: 11px;">Wis</button>
+                        </div>
+                    `;
+                    const subWrapper = document.createElement('div');
+                    subWrapper.className = 'swipe-wrapper';
+                    const subCard = document.createElement('div');
+                    subCard.className = 'folder-card';
+                    subCard.innerHTML = subContent;
+                    subWrapper.appendChild(subCard);
+                    childrenContainer.appendChild(subWrapper);
+                });
+
+                folderLists.forEach(list => {
+                    const childContent = `
+                        <div style="flex: 1;">
+                            <strong style="font-size: 14px; color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</strong><br>
+                            <small style="color: var(--text-muted);">Verwijderde lijst</small>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="success restore-list-btn" data-id="${list.id}" style="padding: 4px 8px; font-size: 11px;">Herstel</button>
+                            <button type="button" class="danger perm-delete-list-btn" data-id="${list.id}" style="padding: 4px 8px; font-size: 11px;">Wis</button>
+                        </div>
+                    `;
+                    const childWrapper = document.createElement('div');
+                    childWrapper.className = 'swipe-wrapper';
+                    const childCard = document.createElement('div');
+                    childCard.className = 'list-card';
+                    childCard.innerHTML = childContent;
+                    childWrapper.appendChild(childCard);
+                    childrenContainer.appendChild(childWrapper);
+                });
+            }
+            container.appendChild(childrenContainer);
+        }
+
+        // Event listeners voor prullenbak items
+        container.querySelectorAll('.restore-folder-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); restoreItem('folder', e.currentTarget.getAttribute('data-id')); });
+        });
+        container.querySelectorAll('.perm-delete-folder-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); permanentDelete('folder', e.currentTarget.getAttribute('data-id')); });
+        });
+        container.querySelectorAll('.restore-list-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); restoreItem('list', e.currentTarget.getAttribute('data-id')); });
+        });
+        container.querySelectorAll('.perm-delete-list-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); permanentDelete('list', e.currentTarget.getAttribute('data-id')); });
+        });
     }
 
     function renderFolderCardAndChildren(folder, container) {
@@ -836,7 +949,8 @@
             let diff = currentX - startX;
             if (diff < 0) {
                 bg.style.opacity = '1';
-                card.style.transform = `translateX(${Math.max(diff, -140)}px)`;
+                // Alleen halve swipe toestaan (max -70px), geen instant volledige swipe verwijdering meer!
+                card.style.transform = `translateX(${Math.max(diff, -70)}px)`;
             }
         }, { passive: true });
 
@@ -846,10 +960,7 @@
             let diff = currentX - startX;
             card.style.transition = 'transform 0.15s ease-out';
 
-            if (diff < -110) {
-                card.style.transform = 'translateX(-100%)';
-                setTimeout(() => deleteItem(type, id), 150);
-            } else if (diff < -50) {
+            if (diff < -35) {
                 card.style.transform = 'translateX(-70px)';
             } else {
                 card.style.transform = 'translateX(0)';
@@ -857,8 +968,9 @@
             }
         });
 
+        // Klik op de prullenbak achtergrond om naar prullenbak te verplaatsen
         bg.addEventListener('click', () => {
-            deleteItem(type, id);
+            moveToPrullenbak(type, id);
         });
 
         if (type === 'list') {
@@ -921,17 +1033,46 @@
         return wrapper;
     }
 
-    function deleteItem(type, id) {
+    function moveToPrullenbak(type, id) {
         if (type === 'folder') {
-            appData.lists.forEach(l => { if (l.folderId === id) l.folderId = null; });
-            appData.folders.forEach(f => { if (f.parentId === id) f.parentId = null; });
-            appData.folders = appData.folders.filter(f => f.id !== id);
+            const folder = appData.folders.find(f => f.id === id);
+            if (folder && folder.isPermanent) {
+                alert('Deze map kan niet worden verwijderd.');
+                return;
+            }
+            folder.parentId = 'prullenbak';
+            folder.isExpanded = false;
         } else {
-            appData.lists = appData.lists.filter(l => l.id !== id);
+            const list = appData.lists.find(l => l.id === id);
+            if (list) list.folderId = 'prullenbak';
         }
         saveToStorage();
         if (activeFolderId) renderFolderLists();
         else renderFolders();
+    }
+
+    function restoreItem(type, id) {
+        if (type === 'folder') {
+            const folder = appData.folders.find(f => f.id === id);
+            if (folder) folder.parentId = null;
+        } else {
+            const list = appData.lists.find(l => l.id === id);
+            if (list) list.folderId = null;
+        }
+        saveToStorage();
+        renderFolders();
+    }
+
+    function permanentDelete(type, id) {
+        if (!confirm('Weet je zeker dat je dit definitief wilt verwijderen?')) return;
+        if (type === 'folder') {
+            appData.lists = appData.lists.filter(l => l.folderId !== id);
+            appData.folders = appData.folders.filter(f => f.id !== id && f.parentId !== id);
+        } else {
+            appData.lists = appData.lists.filter(l => l.id !== id);
+        }
+        saveToStorage();
+        renderFolders();
     }
 
     function bindHomeScreenEvents(container) {
@@ -1029,7 +1170,7 @@
             const newList = {
                 id: 'list_' + Date.now(),
                 name: name,
-                folderId: activeFolderId || null,
+                folderId: (activeFolderId === 'prullenbak') ? null : (activeFolderId || null),
                 color: selectedColorHex,
                 items: [],
                 status: 'openstaand'
@@ -1045,7 +1186,7 @@
                 name: name,
                 color: selectedColorHex,
                 isExpanded: false,
-                parentId: activeFolderId || null
+                parentId: (activeFolderId === 'prullenbak') ? null : (activeFolderId || null)
             };
             appData.folders.push(newFolder);
             saveToStorage();
