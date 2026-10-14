@@ -184,7 +184,7 @@
             align-items: center;
         }
 
-        /* SWIPE CONTAINER MET VOLLEDIG VERBORGEN ACHTERGROND */
+        /* SWIPE CONTAINER */
         .swipe-wrapper {
             position: relative;
             width: 100%;
@@ -206,7 +206,7 @@
             padding-right: 24px;
             color: #f87171;
             z-index: 1;
-            opacity: 0; /* Volledig onzichtbaar totdat er geswipet wordt */
+            opacity: 0;
             transition: opacity 0.15s ease-out;
         }
 
@@ -220,13 +220,13 @@
             justify-content: space-between;
             align-items: center;
             z-index: 2;
-            transition: background 0.2s, border-color 0.2s;
+            transition: background 0.2s, border-color 0.2s, transform 0.15s ease-out;
             touch-action: pan-y;
         }
 
         .folder-card.drag-over {
             border-color: #38bdf8 !important;
-            background: rgba(56, 189, 248, 0.1) !important;
+            background: rgba(56, 189, 248, 0.15) !important;
             transform: scale(1.02);
         }
 
@@ -484,7 +484,7 @@
     ];
 
     try {
-        const saved = localStorage.getItem('bedragLijsten_v32');
+        const saved = localStorage.getItem('bedragLijsten_v33');
         if (saved) {
             appData = JSON.parse(saved);
             if (!appData.folders.some(f => f.id === 'archief')) {
@@ -507,10 +507,11 @@
     let selectedColorHex = '#3b82f6';
     let selectedListColorHex = '#38bdf8';
     let inputModalMode = null;
+    let draggedListId = null;
 
     function saveToStorage() {
         try {
-            localStorage.setItem('bedragLijsten_v32', JSON.stringify(appData));
+            localStorage.setItem('bedragLijsten_v33', JSON.stringify(appData));
         } catch (e) {
             console.error("Fout bij opslaan:", e);
         }
@@ -550,8 +551,7 @@
                 </div>
             `;
 
-            // Alle mappen kunnen geswipet worden
-            const wrapper = createSwipeWrapper(folder.id, 'folder', cardContent);
+            const wrapper = createSwipeAndDropWrapper(folder.id, 'folder', cardContent);
             container.appendChild(wrapper);
         });
 
@@ -603,7 +603,7 @@
                     </div>
                 `;
 
-                const wrapper = createSwipeWrapper(list.id, 'list', cardContent);
+                const wrapper = createSwipeAndDropWrapper(list.id, 'list', cardContent);
                 container.appendChild(wrapper);
             });
         }
@@ -620,7 +620,7 @@
         </svg>
     `;
 
-    function createSwipeWrapper(id, type, innerHtml) {
+    function createSwipeAndDropWrapper(id, type, innerHtml) {
         const wrapper = document.createElement('div');
         wrapper.className = 'swipe-wrapper';
 
@@ -636,6 +636,7 @@
         card.setAttribute('data-type', type);
         wrapper.appendChild(card);
 
+        // --- SWIPE LOGICA ---
         let startX = 0;
         let currentX = 0;
         let isSwiping = false;
@@ -652,7 +653,7 @@
             currentX = e.touches[0].clientX;
             let diff = currentX - startX;
             if (diff < 0) {
-                bg.style.opacity = '1'; // Prullenbak wordt pas zichtbaar tijdens het swipen
+                bg.style.opacity = '1';
                 card.style.transform = `translateX(${Math.max(diff, -140)}px)`;
             }
         }, { passive: true });
@@ -678,20 +679,23 @@
             deleteItem(type, id);
         });
 
+        // --- DRAG AND DROP LOGICA VOOR LIJSTEN & MAPPEN ---
         if (type === 'list') {
             card.setAttribute('draggable', 'true');
             card.addEventListener('dragstart', (e) => {
+                draggedListId = id;
                 e.dataTransfer.setData('text/plain', id);
-                window.activeDraggingListId = id;
+                card.style.opacity = '0.4';
             });
             card.addEventListener('dragend', () => {
-                window.activeDraggingListId = null;
+                draggedListId = null;
+                card.style.opacity = '1';
             });
         }
 
         if (type === 'folder') {
             card.addEventListener('dragover', (e) => {
-                e.preventDefault();
+                e.preventDefault(); // Noodzakelijk om drop toe te staan
                 card.classList.add('drag-over');
             });
             card.addEventListener('dragleave', () => {
@@ -700,9 +704,9 @@
             card.addEventListener('drop', (e) => {
                 e.preventDefault();
                 card.classList.remove('drag-over');
-                const listId = e.dataTransfer.getData('text/plain') || window.activeDraggingListId;
-                if (listId) {
-                    const list = appData.lists.find(l => l.id === listId);
+                const listIdToMove = e.dataTransfer.getData('text/plain') || draggedListId;
+                if (listIdToMove) {
+                    const list = appData.lists.find(l => l.id === listIdToMove);
                     if (list) {
                         list.folderId = id;
                         saveToStorage();
@@ -961,7 +965,7 @@
                 </div>
             `;
 
-            const wrapper = createSwipeWrapper(list.id, 'list', cardContent);
+            const wrapper = createSwipeAndDropWrapper(list.id, 'list', cardContent);
             container.appendChild(wrapper);
         });
 
