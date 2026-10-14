@@ -322,7 +322,7 @@
         /* FLOATING ACTION BUTTON (FAB) */
         .fab-button {
             position: absolute;
-            bottom: 32px;
+            bottom: 80px;
             right: 24px;
             width: 56px;
             height: 56px;
@@ -343,7 +343,7 @@
         .fab-dropdown-menu {
             display: none;
             position: absolute;
-            bottom: 98px;
+            bottom: 146px;
             right: 24px;
             background: #111528;
             border: 1px solid rgba(255, 255, 255, 0.25);
@@ -567,7 +567,7 @@
     ];
 
     try {
-        const saved = localStorage.getItem('bedragLijsten_v41');
+        const saved = localStorage.getItem('bedragLijsten_v42');
         if (saved) {
             appData = JSON.parse(saved);
             if (!appData.folders.some(f => f.id === 'archief')) {
@@ -598,7 +598,7 @@
 
     function saveToStorage() {
         try {
-            localStorage.setItem('bedragLijsten_v41', JSON.stringify(appData));
+            localStorage.setItem('bedragLijsten_v42', JSON.stringify(appData));
         } catch (e) {
             console.error("Fout bij opslaan:", e);
         }
