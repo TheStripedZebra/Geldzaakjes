@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Geldzaakjes App</title>
     <style>
         :root {
@@ -20,34 +20,47 @@
             --success: #10b981;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        html, body {
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
             background-color: var(--bg-dark);
             color: var(--text-main);
-            margin: 0;
-            padding: 16px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-image: radial-gradient(circle at top, #1e1b4b 0%, #070913 70%);
             user-select: none;
             -webkit-user-select: none;
         }
 
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
         .container {
             width: 100%;
             max-width: 480px;
+            height: 100%;
+            max-height: 850px;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 24px;
+            border-radius: 0;
             box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
             padding: 24px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            min-height: 85vh;
             position: relative;
             overflow: hidden;
+        }
+
+        @media (min-width: 500px) {
+            .container {
+                border-radius: 24px;
+                height: 90vh;
+            }
         }
 
         h1, h2 {
@@ -143,6 +156,8 @@
             display: none;
             flex-direction: column;
             flex: 1;
+            overflow: hidden;
+            height: 100%;
         }
 
         .screen.active {
@@ -163,12 +178,12 @@
         .scrollable-list {
             flex: 1;
             overflow-y: auto;
-            max-height: 420px;
             margin-bottom: 15px;
             border-top: 1px solid var(--card-border);
             border-bottom: 1px solid var(--card-border);
             padding-top: 12px;
             padding-bottom: 12px;
+            -webkit-overflow-scrolling: touch;
         }
 
         .total-section {
@@ -182,6 +197,7 @@
             border-radius: 14px;
             margin-bottom: 15px;
             align-items: center;
+            flex-shrink: 0;
         }
 
         /* SWIPE CONTAINER */
@@ -300,9 +316,10 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            flex-shrink: 0;
         }
 
-        /* FLOATING ACTION BUTTON (FAB) MET EXACT GECENTREERDE + */
+        /* FLOATING ACTION BUTTON (FAB) */
         .fab-button {
             position: absolute;
             bottom: 32px;
@@ -322,7 +339,7 @@
             padding: 0;
         }
 
-        /* UITKLAPMENU MET EÉN SLUITENDE OMLIJNING EN RECHTE MIDDENLIJN */
+        /* UITKLAPMENU */
         .fab-dropdown-menu {
             display: none;
             position: absolute;
@@ -367,7 +384,13 @@
             justify-content: center;
             align-items: center;
             padding: 20px;
-            border-radius: 24px;
+            border-radius: 0;
+        }
+
+        @media (min-width: 500px) {
+            #modalOverlay, #moveModalOverlay, #inputModalOverlay, #editListModalOverlay {
+                border-radius: 24px;
+            }
         }
 
         .modal-box {
@@ -404,7 +427,7 @@
 <div class="container">
     <div id="homeScreen" class="screen active" style="position: relative;">
         <h1>Geldzaakjes</h1>
-        <p style="margin-top: 4px;">Organiseer je mappen en lijsten.</p>
+        <p style="margin-top: 4px; margin-bottom: 12px;">Organiseer je mappen en lijsten.</p>
 
         <div class="scrollable-list" id="foldersContainer" style="border-top: none;"></div>
 
@@ -453,7 +476,7 @@
             </div>
         </div>
 
-        <div id="inputSection" style="margin-bottom: 10px;">
+        <div id="inputSection" style="margin-bottom: 10px; flex-shrink: 0;">
             <input type="text" id="itemDescription" placeholder="Omschrijving (bijv. Supermarkt)">
             <input type="number" id="amountInput" step="0.01" placeholder="Bedrag in € (bijv. 12.50)">
             <button type="button" id="addAmountBtn" style="width: 100%;">Bedrag Toevoegen</button>
@@ -544,7 +567,7 @@
     ];
 
     try {
-        const saved = localStorage.getItem('bedragLijsten_v40');
+        const saved = localStorage.getItem('bedragLijsten_v41');
         if (saved) {
             appData = JSON.parse(saved);
             if (!appData.folders.some(f => f.id === 'archief')) {
@@ -575,7 +598,7 @@
 
     function saveToStorage() {
         try {
-            localStorage.setItem('bedragLijsten_v40', JSON.stringify(appData));
+            localStorage.setItem('bedragLijsten_v41', JSON.stringify(appData));
         } catch (e) {
             console.error("Fout bij opslaan:", e);
         }
