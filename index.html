@@ -220,8 +220,8 @@
         .swipe-action-bg {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(239, 68, 68, 0.25);
-            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.5);
             border-radius: 14px;
             display: flex;
             align-items: center;
@@ -529,7 +529,7 @@
     ];
 
     try {
-        const saved = localStorage.getItem('bedragLijsten_v30');
+        const saved = localStorage.getItem('bedragLijsten_v31');
         if (saved) {
             appData = JSON.parse(saved);
             if (!appData.folders.some(f => f.id === 'archief')) {
@@ -555,7 +555,7 @@
 
     function saveToStorage() {
         try {
-            localStorage.setItem('bedragLijsten_v30', JSON.stringify(appData));
+            localStorage.setItem('bedragLijsten_v31', JSON.stringify(appData));
         } catch (e) {
             console.error("Fout bij opslaan:", e);
         }
@@ -723,31 +723,17 @@
             });
         }
 
+        // Drag and Drop voor lijsten
         if (type === 'list') {
             card.setAttribute('draggable', 'true');
             card.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('text/plain', id);
+                window.activeDraggingListId = id;
             });
 
-            let pressTimer;
-            let isTouchDragging = false;
-
-            card.addEventListener('touchstart', (e) => {
-                pressTimer = setTimeout(() => {
-                    isTouchDragging = true;
-                    card.style.opacity = '0.6';
-                    window.activeDraggingListId = id;
-                }, 500);
-            }, { passive: true });
-
-            card.addEventListener('touchend', () => {
-                clearTimeout(pressTimer);
-                if (isTouchDragging) {
-                    isTouchDragging = false;
-                    card.style.opacity = '1';
-                    window.activeDraggingListId = null;
-                }
-            }, { passive: true });
+            card.addEventListener('dragend', () => {
+                window.activeDraggingListId = null;
+            });
         }
 
         if (type === 'folder') {
@@ -761,7 +747,7 @@
             card.addEventListener('drop', (e) => {
                 e.preventDefault();
                 card.classList.remove('drag-over');
-                const listId = e.dataTransfer.getData('text/plain');
+                const listId = e.dataTransfer.getData('text/plain') || window.activeDraggingListId;
                 if (listId) {
                     const list = appData.lists.find(l => l.id === listId);
                     if (list) {
@@ -769,18 +755,6 @@
                         saveToStorage();
                         renderFolders();
                     }
-                }
-            });
-
-            card.addEventListener('touchend', () => {
-                if (window.activeDraggingListId && window.activeDraggingListId !== id) {
-                    const list = appData.lists.find(l => l.id === window.activeDraggingListId);
-                    if (list) {
-                        list.folderId = id;
-                        saveToStorage();
-                        renderFolders();
-                    }
-                    window.activeDraggingListId = null;
                 }
             });
         }
