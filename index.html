@@ -163,7 +163,7 @@
         .scrollable-list {
             flex: 1;
             overflow-y: auto;
-            max-height: 380px;
+            max-height: 420px;
             margin-bottom: 15px;
             border-top: 1px solid var(--card-border);
             border-bottom: 1px solid var(--card-border);
@@ -188,7 +188,7 @@
         .swipe-wrapper {
             position: relative;
             width: 100%;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             overflow: hidden;
             border-radius: 14px;
             background: #070913;
@@ -215,7 +215,7 @@
             background: #111528;
             border: 1px solid var(--card-border);
             border-radius: 14px;
-            padding: 16px;
+            padding: 14px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -228,6 +228,49 @@
             border-color: #38bdf8 !important;
             background: rgba(56, 189, 248, 0.15) !important;
             transform: scale(1.02);
+        }
+
+        .folder-children-container {
+            margin-left: 16px;
+            padding-left: 12px;
+            border-left: 2px dashed rgba(255, 255, 255, 0.15);
+            margin-bottom: 12px;
+            margin-top: -4px;
+        }
+
+        .standalone-drop-zone {
+            border: 2px dashed transparent;
+            border-radius: 16px;
+            padding: 4px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .standalone-drop-zone.drag-over {
+            border-color: #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.1) !important;
+        }
+
+        /* PIJLTJES-VAKJE */
+        .toggle-folder-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            width: 40px;
+            align-self: stretch;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.2s ease;
+            margin-right: 4px;
+            flex-shrink: 0;
+        }
+        .toggle-folder-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
         .section-header {
@@ -259,9 +302,10 @@
             gap: 10px;
         }
 
-        #fabBtn {
+        /* FLOATING ACTION BUTTON (FAB) MET EXACT GECENTREERDE + */
+        .fab-button {
             position: absolute;
-            bottom: 24px;
+            bottom: 32px;
             right: 24px;
             width: 56px;
             height: 56px;
@@ -269,22 +313,23 @@
             background: var(--gradient-accent);
             color: white;
             border: none;
-            font-size: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 8px 20px rgba(99, 102, 241, 0.5);
             cursor: pointer;
             z-index: 50;
+            padding: 0;
         }
 
-        #fabDropdown {
+        /* UITKLAPMENU MET EÉN SLUITENDE OMLIJNING EN RECHTE MIDDENLIJN */
+        .fab-dropdown-menu {
             display: none;
             position: absolute;
-            bottom: 90px;
+            bottom: 98px;
             right: 24px;
-            background: #1a203c;
-            border: 1px solid var(--card-border);
+            background: #111528;
+            border: 1px solid rgba(255, 255, 255, 0.25);
             border-radius: 16px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
             z-index: 60;
@@ -298,12 +343,18 @@
             color: var(--text-main);
             background: transparent;
             border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.25);
             width: 100%;
             text-align: left;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        .fab-option:last-child {
+            border-bottom: none;
         }
 
         #modalOverlay, #moveModalOverlay, #inputModalOverlay, #editListModalOverlay {
@@ -357,29 +408,38 @@
 
         <div class="scrollable-list" id="foldersContainer" style="border-top: none;"></div>
 
-        <div id="fabDropdown">
-            <button type="button" class="fab-option" id="menuAddListBtn">
+        <div id="fabDropdown" class="fab-dropdown-menu">
+            <button type="button" class="fab-option" data-action="list">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Lijst toevoegen
             </button>
-            <button type="button" class="fab-option" id="menuAddFolderBtn">
+            <button type="button" class="fab-option" data-action="folder">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Map toevoegen
             </button>
         </div>
-        <button type="button" id="fabBtn">+</button>
+        <button type="button" id="fabBtn" class="fab-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
     </div>
 
-    <div id="folderDetailScreen" class="screen">
+    <div id="folderDetailScreen" class="screen" style="position: relative;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
             <button type="button" class="secondary" id="backToHomeBtn">← Terug</button>
             <h2 id="currentFolderName" style="margin: 0; font-size: 18px; text-align: center; flex: 1; padding: 0 10px;">Map</h2>
         </div>
 
-        <div id="createListInFolderSection" style="margin-bottom: 15px;">
-            <input type="text" id="newListNameInFolder" placeholder="Naam nieuwe lijst in deze map">
-            <button type="button" id="createListInFolderBtn" style="width: 100%;">Lijst Aanmaken in deze Map</button>
-        </div>
-
         <div class="scrollable-list" id="folderListsContainer"></div>
+
+        <div id="folderFabDropdown" class="fab-dropdown-menu">
+            <button type="button" class="fab-option" data-action="list">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Lijst toevoegen
+            </button>
+            <button type="button" class="fab-option" data-action="folder">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Map toevoegen
+            </button>
+        </div>
+        <button type="button" id="folderFabBtn" class="fab-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
     </div>
 
     <div id="detailScreen" class="screen">
@@ -466,8 +526,8 @@
 <script>
     let appData = {
         folders: [
-            { id: 'default', name: 'Algemeen', color: '#3b82f6' },
-            { id: 'archief', name: 'Archief', color: '#9ca3af' }
+            { id: 'default', name: 'Algemeen', color: '#3b82f6', isExpanded: false, parentId: null },
+            { id: 'archief', name: 'Archief', color: '#9ca3af', isExpanded: false, parentId: null }
         ],
         lists: []
     };
@@ -484,16 +544,20 @@
     ];
 
     try {
-        const saved = localStorage.getItem('bedragLijsten_v33');
+        const saved = localStorage.getItem('bedragLijsten_v40');
         if (saved) {
             appData = JSON.parse(saved);
             if (!appData.folders.some(f => f.id === 'archief')) {
-                appData.folders.push({ id: 'archief', name: 'Archief', color: '#9ca3af' });
+                appData.folders.push({ id: 'archief', name: 'Archief', color: '#9ca3af', isExpanded: false, parentId: null });
             }
             if (!appData.folders.some(f => f.id === 'default')) {
-                appData.folders.unshift({ id: 'default', name: 'Algemeen', color: '#3b82f6' });
+                appData.folders.unshift({ id: 'default', name: 'Algemeen', color: '#3b82f6', isExpanded: false, parentId: null });
             }
-            appData.folders.forEach(f => { if (!f.color) f.color = '#3b82f6'; });
+            appData.folders.forEach(f => { 
+                if (!f.color) f.color = '#3b82f6'; 
+                if (f.isExpanded === undefined) f.isExpanded = false;
+                if (f.parentId === undefined) f.parentId = null;
+            });
             appData.lists.forEach(l => { if (!l.color) l.color = '#38bdf8'; });
         }
     } catch (e) {
@@ -511,11 +575,14 @@
 
     function saveToStorage() {
         try {
-            localStorage.setItem('bedragLijsten_v33', JSON.stringify(appData));
+            localStorage.setItem('bedragLijsten_v40', JSON.stringify(appData));
         } catch (e) {
             console.error("Fout bij opslaan:", e);
         }
     }
+
+    const arrowRightSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+    const arrowDownSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
     function renderFolders() {
         const container = document.getElementById('foldersContainer');
@@ -527,49 +594,30 @@
         folderHeader.innerText = 'Mappen';
         container.appendChild(folderHeader);
 
-        appData.folders.forEach(folder => {
-            const folderLists = appData.lists.filter(l => l.folderId === folder.id);
-            const folderColor = folder.color || '#3b82f6';
-            const folderSvg = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${folderColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-            `;
+        const rootFolders = appData.folders.filter(f => !f.parentId);
 
-            let actionButtonsHtml = `
-                <button type="button" class="warning-red rename-folder-btn" data-id="${folder.id}" style="padding: 6px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Wijzig
-                </button>`;
-
-            const cardContent = `
-                <div style="flex: 1; cursor: pointer;" class="open-folder-target" data-id="${folder.id}">
-                    <strong style="font-size: 16px;">${folderSvg}<span style="color: var(--text-main);">${escapeHtml(folder.name)}</span></strong><br>
-                    <small style="color: var(--text-muted);">${folderLists.length} lijsten</small>
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    ${actionButtonsHtml}
-                </div>
-            `;
-
-            const wrapper = createSwipeAndDropWrapper(folder.id, 'folder', cardContent);
-            container.appendChild(wrapper);
+        rootFolders.forEach(folder => {
+            renderFolderCardAndChildren(folder, container);
         });
 
-        const standaloneLists = appData.lists.filter(l => !l.folderId);
-        
+        const standaloneZone = document.createElement('div');
+        standaloneZone.className = 'standalone-drop-zone';
+
         const listHeader = document.createElement('div');
         listHeader.className = 'section-header';
-        listHeader.style.marginTop = '24px';
+        listHeader.style.marginTop = '16px';
         listHeader.innerText = 'Lijsten';
-        container.appendChild(listHeader);
+        standaloneZone.appendChild(listHeader);
+
+        const standaloneLists = appData.lists.filter(l => !l.folderId);
 
         if (standaloneLists.length === 0) {
             const emptyNotice = document.createElement('p');
             emptyNotice.style.fontSize = '13px';
             emptyNotice.style.color = 'var(--text-muted)';
             emptyNotice.style.marginLeft = '4px';
-            emptyNotice.innerText = 'Geen lijsten op het beginscherm.';
-            container.appendChild(emptyNotice);
+            emptyNotice.innerText = 'Geen lijsten op het scherm. Sleep een lijst hierheen om uit een map te halen.';
+            standaloneZone.appendChild(emptyNotice);
         } else {
             standaloneLists.forEach(list => {
                 const items = list.items || [];
@@ -604,11 +652,123 @@
                 `;
 
                 const wrapper = createSwipeAndDropWrapper(list.id, 'list', cardContent);
-                container.appendChild(wrapper);
+                standaloneZone.appendChild(wrapper);
             });
         }
 
+        standaloneZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            standaloneZone.classList.add('drag-over');
+        });
+        standaloneZone.addEventListener('dragleave', () => {
+            standaloneZone.classList.remove('drag-over');
+        });
+        standaloneZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            standaloneZone.classList.remove('drag-over');
+            const listIdToMove = e.dataTransfer.getData('text/plain') || draggedListId;
+            if (listIdToMove) {
+                const list = appData.lists.find(l => l.id === listIdToMove);
+                if (list) {
+                    list.folderId = null;
+                    saveToStorage();
+                    renderFolders();
+                }
+            }
+        });
+
+        container.appendChild(standaloneZone);
+
         bindHomeScreenEvents(container);
+    }
+
+    function renderFolderCardAndChildren(folder, container) {
+        const folderLists = appData.lists.filter(l => l.folderId === folder.id);
+        const subFolders = appData.folders.filter(f => f.parentId === folder.id);
+        const totalItemsCount = folderLists.length + subFolders.length;
+
+        const folderColor = folder.color || '#3b82f6';
+        const folderSvg = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${folderColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+        `;
+
+        const arrowSymbol = folder.isExpanded ? arrowDownSvg : arrowRightSvg;
+
+        const cardContent = `
+            <button type="button" class="toggle-folder-btn" data-id="${folder.id}">
+                ${arrowSymbol}
+            </button>
+            <div style="flex: 1; cursor: pointer; margin-left: 4px;" class="open-folder-target" data-id="${folder.id}">
+                <strong style="font-size: 16px;">${folderSvg}<span style="color: var(--text-main);">${escapeHtml(folder.name)}</span></strong><br>
+                <small style="color: var(--text-muted);">${totalItemsCount} items</small>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <button type="button" class="warning-red rename-folder-btn" data-id="${folder.id}" style="padding: 6px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Wijzig
+                </button>
+            </div>
+        `;
+
+        const wrapper = createSwipeAndDropWrapper(folder.id, 'folder', cardContent);
+        container.appendChild(wrapper);
+
+        if (folder.isExpanded) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'folder-children-container';
+
+            if (totalItemsCount === 0) {
+                childrenContainer.innerHTML = '<p style="font-size: 12px; color: var(--text-muted); margin: 6px 0;">Map is leeg.</p>';
+            } else {
+                subFolders.forEach(sub => {
+                    const subLists = appData.lists.filter(l => l.folderId === sub.id);
+                    const subColor = sub.color || '#8b5cf6';
+                    const subSvg = `
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${subColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    `;
+                    const subContent = `
+                        <div style="flex: 1; cursor: pointer;" class="open-folder-target" data-id="${sub.id}">
+                            <strong style="font-size: 14px;">${subSvg}<span style="color: var(--text-main);">${escapeHtml(sub.name)}</span></strong><br>
+                            <small style="color: var(--text-muted);">${subLists.length} lijsten</small>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <button type="button" class="warning-red rename-folder-btn" data-id="${sub.id}" style="padding: 4px 8px; font-size: 11px;">Wijzig</button>
+                        </div>
+                    `;
+                    const subWrapper = createSwipeAndDropWrapper(sub.id, 'folder', subContent);
+                    childrenContainer.appendChild(subWrapper);
+                });
+
+                folderLists.forEach(list => {
+                    const items = list.items || [];
+                    const total = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                    const listColor = list.color || '#38bdf8';
+                    const listSvg = `
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${listColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                    `;
+
+                    const childContent = `
+                        <div style="flex: 1; cursor: pointer;" class="open-list-target" data-id="${list.id}">
+                            <strong style="font-size: 14px;">${listSvg}<span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong><br>
+                            <small style="color: var(--text-muted);">Totaal: € ${total.toFixed(2).replace('.', ',')}</small>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <button type="button" class="warning-red rename-list-btn" data-id="${list.id}" style="padding: 4px 8px; font-size: 11px;">Wijzig</button>
+                        </div>
+                    `;
+
+                    const childWrapper = createSwipeAndDropWrapper(list.id, 'list', childContent);
+                    childrenContainer.appendChild(childWrapper);
+                });
+            }
+            container.appendChild(childrenContainer);
+        }
     }
 
     const trashIconSvg = `
@@ -636,7 +796,6 @@
         card.setAttribute('data-type', type);
         wrapper.appendChild(card);
 
-        // --- SWIPE LOGICA ---
         let startX = 0;
         let currentX = 0;
         let isSwiping = false;
@@ -679,13 +838,32 @@
             deleteItem(type, id);
         });
 
-        // --- DRAG AND DROP LOGICA VOOR LIJSTEN & MAPPEN ---
         if (type === 'list') {
             card.setAttribute('draggable', 'true');
             card.addEventListener('dragstart', (e) => {
                 draggedListId = id;
                 e.dataTransfer.setData('text/plain', id);
-                card.style.opacity = '0.4';
+
+                const dragGhost = document.createElement('div');
+                const listObj = appData.lists.find(l => l.id === id);
+                const col = listObj ? (listObj.color || '#38bdf8') : '#38bdf8';
+                
+                dragGhost.style.cssText = `
+                    width: 50px; height: 50px; background: #1a203c; border: 2px solid ${col};
+                    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: absolute; top: -1000px;
+                `;
+                dragGhost.innerHTML = `
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                `;
+                document.body.appendChild(dragGhost);
+                e.dataTransfer.setDragImage(dragGhost, 25, 25);
+                setTimeout(() => document.body.removeChild(dragGhost), 0);
+
+                card.style.opacity = '0.3';
             });
             card.addEventListener('dragend', () => {
                 draggedListId = null;
@@ -695,7 +873,7 @@
 
         if (type === 'folder') {
             card.addEventListener('dragover', (e) => {
-                e.preventDefault(); // Noodzakelijk om drop toe te staan
+                e.preventDefault();
                 card.classList.add('drag-over');
             });
             card.addEventListener('dragleave', () => {
@@ -710,7 +888,8 @@
                     if (list) {
                         list.folderId = id;
                         saveToStorage();
-                        renderFolders();
+                        if (activeFolderId) renderFolderLists();
+                        else renderFolders();
                     }
                 }
             });
@@ -722,15 +901,29 @@
     function deleteItem(type, id) {
         if (type === 'folder') {
             appData.lists.forEach(l => { if (l.folderId === id) l.folderId = null; });
+            appData.folders.forEach(f => { if (f.parentId === id) f.parentId = null; });
             appData.folders = appData.folders.filter(f => f.id !== id);
         } else {
             appData.lists = appData.lists.filter(l => l.id !== id);
         }
         saveToStorage();
-        renderFolders();
+        if (activeFolderId) renderFolderLists();
+        else renderFolders();
     }
 
     function bindHomeScreenEvents(container) {
+        container.querySelectorAll('.toggle-folder-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const folderId = e.currentTarget.getAttribute('data-id');
+                const folder = appData.folders.find(f => f.id === folderId);
+                if (folder) {
+                    folder.isExpanded = !folder.isExpanded;
+                    saveToStorage();
+                    renderFolders();
+                }
+            });
+        });
         container.querySelectorAll('.open-folder-target').forEach(el => {
             el.addEventListener('click', (e) => openFolder(e.currentTarget.getAttribute('data-id')));
         });
@@ -745,15 +938,16 @@
         });
     }
 
-    function toggleFabDropdown(e) {
+    function toggleFabDropdown(e, targetDropdownId) {
         e.stopPropagation();
-        const dropdown = document.getElementById('fabDropdown');
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        const dropdown = document.getElementById(targetDropdownId);
+        const isOpen = dropdown.style.display === 'block';
+        closeFabDropdown();
+        if (!isOpen) dropdown.style.display = 'block';
     }
 
     function closeFabDropdown() {
-        const dropdown = document.getElementById('fabDropdown');
-        if (dropdown) dropdown.style.display = 'none';
+        document.querySelectorAll('.fab-dropdown-menu').forEach(d => d.style.display = 'none');
     }
 
     function openInputModal(mode) {
@@ -769,11 +963,11 @@
         colorSec.style.display = 'block';
 
         if (mode === 'list') {
-            titleEl.innerText = 'Lijst toevoegen';
+            titleEl.innerText = activeFolderId ? 'Lijst in map toevoegen' : 'Lijst toevoegen';
             descEl.innerText = 'Geef de naam en kleur van de nieuwe lijst op:';
             selectedColorHex = '#38bdf8';
         } else {
-            titleEl.innerText = 'Map toevoegen';
+            titleEl.innerText = activeFolderId ? 'Submap toevoegen' : 'Map toevoegen';
             descEl.innerText = 'Geef de naam en kleur van de nieuwe map op:';
             selectedColorHex = '#8b5cf6';
         }
@@ -812,7 +1006,7 @@
             const newList = {
                 id: 'list_' + Date.now(),
                 name: name,
-                folderId: null,
+                folderId: activeFolderId || null,
                 color: selectedColorHex,
                 items: [],
                 status: 'openstaand'
@@ -820,17 +1014,21 @@
             appData.lists.push(newList);
             saveToStorage();
             closeInputModal();
-            renderFolders();
-            openList(newList.id);
+            if (activeFolderId) renderFolderLists();
+            else renderFolders();
         } else {
-            appData.folders.push({
+            const newFolder = {
                 id: 'folder_' + Date.now(),
                 name: name,
-                color: selectedColorHex
-            });
+                color: selectedColorHex,
+                isExpanded: false,
+                parentId: activeFolderId || null
+            };
+            appData.folders.push(newFolder);
             saveToStorage();
             closeInputModal();
-            renderFolders();
+            if (activeFolderId) renderFolderLists();
+            else renderFolders();
         }
     }
 
@@ -864,7 +1062,8 @@
         folder.color = selectedColorHex;
         saveToStorage();
         closeEditModal();
-        renderFolders();
+        if (activeFolderId) renderFolderLists();
+        else renderFolders();
     }
 
     function closeEditModal() {
@@ -902,7 +1101,8 @@
         list.color = selectedListColorHex;
         saveToStorage();
         closeEditListModal();
-        renderFolders();
+        if (activeFolderId) renderFolderLists();
+        else renderFolders();
     }
 
     function closeEditListModal() {
@@ -916,8 +1116,6 @@
         if (!folder) return;
 
         document.getElementById('currentFolderName').innerText = folder.name;
-        document.getElementById('createListInFolderSection').style.display = (folderId === 'archief') ? 'none' : 'block';
-
         renderFolderLists();
         switchScreen('folderDetailScreen');
     }
@@ -927,11 +1125,36 @@
         if (!container) return;
         container.innerHTML = '';
 
+        const subFolders = appData.folders.filter(f => f.parentId === activeFolderId);
         const folderLists = appData.lists.filter(l => l.folderId === activeFolderId);
-        if (folderLists.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin-top: 40px;">Geen lijsten in deze map.</p>';
+
+        if (subFolders.length === 0 && folderLists.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin-top: 40px;">Geen mappen of lijsten in deze map.</p>';
             return;
         }
+
+        subFolders.forEach(sub => {
+            const subLists = appData.lists.filter(l => l.folderId === sub.id);
+            const subColor = sub.color || '#8b5cf6';
+            const subSvg = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${subColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+            `;
+            const subContent = `
+                <div style="flex: 1; cursor: pointer;" class="open-folder-target" data-id="${sub.id}">
+                    <strong style="font-size: 16px;">${subSvg}<span style="color: var(--text-main);">${escapeHtml(sub.name)}</span></strong><br>
+                    <small style="color: var(--text-muted);">${subLists.length} lijsten</small>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button type="button" class="warning-red rename-folder-btn" data-id="${sub.id}" style="padding: 6px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Wijzig
+                    </button>
+                </div>
+            `;
+            const subWrapper = createSwipeAndDropWrapper(sub.id, 'folder', subContent);
+            container.appendChild(subWrapper);
+        });
 
         folderLists.forEach(list => {
             const items = list.items || [];
@@ -969,33 +1192,18 @@
             container.appendChild(wrapper);
         });
 
+        container.querySelectorAll('.open-folder-target').forEach(el => {
+            el.addEventListener('click', (e) => openFolder(e.currentTarget.getAttribute('data-id')));
+        });
+        container.querySelectorAll('.rename-folder-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(e.currentTarget.getAttribute('data-id')); });
+        });
         container.querySelectorAll('.open-list-target').forEach(el => {
             el.addEventListener('click', (e) => openList(e.currentTarget.getAttribute('data-id')));
         });
         container.querySelectorAll('.rename-list-btn').forEach(btn => {
             btn.addEventListener('click', (e) => { e.stopPropagation(); openEditListModal(e.currentTarget.getAttribute('data-id')); });
         });
-    }
-
-    function createNewListInFolder() {
-        const input = document.getElementById('newListNameInFolder');
-        const name = input.value.trim();
-        if (!name) { alert('Geef de lijst eerst een naam.'); return; }
-
-        const newList = {
-            id: 'list_' + Date.now(),
-            name: name,
-            folderId: activeFolderId,
-            color: '#38bdf8',
-            items: [],
-            status: 'openstaand'
-        };
-
-        appData.lists.push(newList);
-        input.value = '';
-        saveToStorage();
-        renderFolderLists();
-        openList(newList.id);
     }
 
     function openList(id) {
@@ -1174,8 +1382,19 @@
     }
 
     function handleBackAction() {
-        if (activeFolderId) openFolder(activeFolderId);
-        else { renderFolders(); switchScreen('homeScreen'); }
+        if (activeFolderId) {
+            const currentFolder = appData.folders.find(f => f.id === activeFolderId);
+            if (currentFolder && currentFolder.parentId) {
+                openFolder(currentFolder.parentId);
+            } else {
+                activeFolderId = null;
+                renderFolders();
+                switchScreen('homeScreen');
+            }
+        } else {
+            renderFolders();
+            switchScreen('homeScreen');
+        }
     }
 
     function escapeHtml(text) {
@@ -1185,9 +1404,17 @@
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById('fabBtn').addEventListener('click', toggleFabDropdown);
-        document.getElementById('menuAddListBtn').addEventListener('click', () => openInputModal('list'));
-        document.getElementById('menuAddFolderBtn').addEventListener('click', () => openInputModal('folder'));
+        document.getElementById('fabBtn').addEventListener('click', (e) => toggleFabDropdown(e, 'fabDropdown'));
+        document.getElementById('folderFabBtn').addEventListener('click', (e) => toggleFabDropdown(e, 'folderFabDropdown'));
+
+        document.querySelectorAll('.fab-dropdown-menu').forEach(menu => {
+            menu.querySelectorAll('.fab-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = btn.getAttribute('data-action');
+                    openInputModal(action);
+                });
+            });
+        });
 
         document.addEventListener('click', closeFabDropdown);
 
@@ -1197,7 +1424,6 @@
         document.getElementById('editListSaveBtn').addEventListener('click', saveEditListModal);
         document.getElementById('editListCancelBtn').addEventListener('click', closeEditListModal);
 
-        document.getElementById('createListInFolderBtn').addEventListener('click', createNewListInFolder);
         document.getElementById('addAmountBtn').addEventListener('click', addAmount);
         
         document.getElementById('backToHomeBtn').addEventListener('click', () => {
