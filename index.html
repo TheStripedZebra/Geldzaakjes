@@ -100,7 +100,6 @@
             background: rgba(239, 68, 68, 0.3);
         }
 
-        /* LIJST AFRONDEN knop */
         button.heavy-danger {
             background: rgba(239, 68, 68, 0.2);
             color: #f87171;
@@ -119,7 +118,6 @@
             background: rgba(239, 68, 68, 0.35);
         }
 
-        /* Rode Wijzig knop & Archief verplaatsen knop */
         button.warning-red {
             background: rgba(239, 68, 68, 0.15);
             color: #f87171;
@@ -210,7 +208,7 @@
             align-items: center;
         }
 
-        /* SWIPE CONTAINER VOOR KAARTEN */
+        /* SWIPE CONTAINER */
         .swipe-wrapper {
             position: relative;
             width: 100%;
@@ -219,7 +217,7 @@
             border-radius: 14px;
         }
 
-        .swipe-background {
+        .swipe-action-bg {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(239, 68, 68, 0.25);
@@ -287,7 +285,6 @@
             gap: 10px;
         }
 
-        /* Zwevende plus knop (FAB) rechtsonder */
         #fabBtn {
             position: absolute;
             bottom: 24px;
@@ -348,7 +345,6 @@
             border-bottom: 1px solid var(--card-border);
         }
 
-        /* MODALS */
         #modalOverlay, #moveModalOverlay, #inputModalOverlay, #editListModalOverlay {
             display: none;
             position: absolute;
@@ -400,14 +396,11 @@
 <body>
 
 <div class="container">
-    <!-- HOOFDSCHERM (MAP-OVERZICHT & LIJSTEN) -->
     <div id="homeScreen" class="screen active" style="position: relative;">
         <h1>Geldzaakjes</h1>
         <p style="margin-top: 4px;">Organiseer je mappen en lijsten.</p>
 
-        <div class="scrollable-list" id="foldersContainer" style="border-top: none;">
-            <!-- Mappen en lijsten komen hier dynamisch -->
-        </div>
+        <div class="scrollable-list" id="foldersContainer" style="border-top: none;"></div>
 
         <div id="fabDropdown">
             <button type="button" class="fab-option" id="menuAddListBtn">
@@ -420,7 +413,6 @@
         <button type="button" id="fabBtn">+</button>
     </div>
 
-    <!-- MAP DETAIL SCHERM (LIJSTEN BINNEN EEN MAP) -->
     <div id="folderDetailScreen" class="screen">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
             <button type="button" class="secondary" id="backToHomeBtn">← Terug</button>
@@ -432,12 +424,9 @@
             <button type="button" id="createListInFolderBtn" style="width: 100%;">Lijst Aanmaken in deze Map</button>
         </div>
 
-        <div class="scrollable-list" id="folderListsContainer">
-            <!-- Lijsten binnen deze map komen hier -->
-        </div>
+        <div class="scrollable-list" id="folderListsContainer"></div>
     </div>
 
-    <!-- DETAILS / INVOER SCHERM VOOR BEDRAGEN -->
     <div id="detailScreen" class="screen">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; gap: 8px;">
             <button type="button" class="secondary" id="backToFolderBtn" style="padding: 10px 14px;">← Terug</button>
@@ -455,9 +444,7 @@
             <button type="button" id="addAmountBtn" style="width: 100%;">Bedrag Toevoegen</button>
         </div>
 
-        <div class="scrollable-list" id="amountsContainer">
-            <!-- Bedragen komen hier -->
-        </div>
+        <div class="scrollable-list" id="amountsContainer"></div>
 
         <div class="total-section">
             <span style="color: var(--text-muted); font-size: 15px;">Totaalbedrag:</span>
@@ -467,7 +454,6 @@
         <div class="actions-bottom" id="actionButtonsContainer"></div>
     </div>
 
-    <!-- INVOER MODAL VOOR NIEUWE LIJST / MAP -->
     <div id="inputModalOverlay">
         <div class="modal-box">
             <h2 id="inputModalTitle">Nieuw item</h2>
@@ -487,7 +473,6 @@
         </div>
     </div>
 
-    <!-- IN-APP WIJZIG MAP MODAL -->
     <div id="modalOverlay">
         <div class="modal-box">
             <h2>Map Wijzigen</h2>
@@ -505,7 +490,6 @@
         </div>
     </div>
 
-    <!-- IN-APP WIJZIG LIJST MODAL -->
     <div id="editListModalOverlay">
         <div class="modal-box">
             <h2>Lijst Wijzigen</h2>
@@ -545,7 +529,7 @@
     ];
 
     try {
-        const saved = localStorage.getItem('bedragLijsten_v29');
+        const saved = localStorage.getItem('bedragLijsten_v30');
         if (saved) {
             appData = JSON.parse(saved);
             if (!appData.folders.some(f => f.id === 'archief')) {
@@ -571,19 +555,17 @@
 
     function saveToStorage() {
         try {
-            localStorage.setItem('bedragLijsten_v29', JSON.stringify(appData));
+            localStorage.setItem('bedragLijsten_v30', JSON.stringify(appData));
         } catch (e) {
             console.error("Fout bij opslaan:", e);
         }
     }
 
-    // --- HOOFDSCHERM: RENDEREN ---
     function renderFolders() {
         const container = document.getElementById('foldersContainer');
         if (!container) return;
         container.innerHTML = '';
 
-        // 1. Mappen sectie
         const folderHeader = document.createElement('div');
         folderHeader.className = 'section-header';
         folderHeader.innerText = 'Mappen';
@@ -618,7 +600,6 @@
             container.appendChild(wrapper);
         });
 
-        // 2. Lijsten sectie (los op beginscherm)
         const standaloneLists = appData.lists.filter(l => !l.folderId);
         
         const listHeader = document.createElement('div');
@@ -675,7 +656,6 @@
         bindHomeScreenEvents(container);
     }
 
-    // --- SWIPE TO DELETE & DRAG AND DROP IMPLEMENTATIE ---
     const trashIconSvg = `
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"></polyline>
@@ -690,7 +670,7 @@
         wrapper.className = 'swipe-wrapper';
 
         const bg = document.createElement('div');
-        bg.className = 'swipe-background';
+        bg.className = 'swipe-action-bg';
         bg.innerHTML = trashIconSvg;
         wrapper.appendChild(bg);
 
@@ -743,14 +723,12 @@
             });
         }
 
-        // Drag & Drop / Slepen voor lijsten naar mappen
         if (type === 'list') {
             card.setAttribute('draggable', 'true');
             card.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('text/plain', id);
             });
 
-            // Touch Drag & Drop simulatie voor mobiel
             let pressTimer;
             let isTouchDragging = false;
 
@@ -794,7 +772,6 @@
                 }
             });
 
-            // Mobiele drop ondersteuning via touch
             card.addEventListener('touchend', () => {
                 if (window.activeDraggingListId && window.activeDraggingListId !== id) {
                     const list = appData.lists.find(l => l.id === window.activeDraggingListId);
@@ -837,7 +814,6 @@
         });
     }
 
-    // --- DROPDOWN & INPUT MODAL ---
     function toggleFabDropdown(e) {
         e.stopPropagation();
         const dropdown = document.getElementById('fabDropdown');
@@ -927,7 +903,6 @@
         }
     }
 
-    // --- MODAL: WIJZIG MAP ---
     function openEditModal(folderId) {
         const folder = appData.folders.find(f => f.id === folderId);
         if (!folder) return;
@@ -966,7 +941,6 @@
         editingFolderId = null;
     }
 
-    // --- MODAL: WIJZIG LIJST ---
     function openEditListModal(listId) {
         const list = appData.lists.find(l => l.id === listId);
         if (!list) return;
@@ -1005,7 +979,6 @@
         editingListId = null;
     }
 
-    // --- MAP DETAIL SCHERM ---
     function openFolder(folderId) {
         activeFolderId = folderId;
         const folder = appData.folders.find(f => f.id === folderId);
@@ -1094,7 +1067,6 @@
         openList(newList.id);
     }
 
-    // --- DETAILSCHERM VAN EEN LIJST ---
     function openList(id) {
         activeListId = id;
         const list = appData.lists.find(l => l.id === id);
