@@ -251,6 +251,37 @@
             flex-shrink: 0;
         }
 
+        .photo-zoom-stage {
+            width: 100%;
+            height: 270px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--card-border);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            touch-action: none;
+        }
+
+        #photoPreviewImg {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transform-origin: center center;
+            will-change: transform;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .zoom-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+
         /* SWIPE CONTAINER */
         .swipe-wrapper {
             position: relative;
@@ -602,7 +633,10 @@
     <div id="photoPreviewModalOverlay">
         <div class="modal-box" style="text-align: center;">
             <h2 style="margin-bottom: 12px;">Foto bij item</h2>
-            <img id="photoPreviewImg" src="" alt="Bijgevoegde foto" style="max-width: 100%; max-height: 260px; border-radius: 12px; object-fit: contain; margin-bottom: 16px; border: 1px solid var(--card-border);">
+            <div class="photo-zoom-stage" id="photoZoomStage">
+                <img id="photoPreviewImg" src="" alt="Bijgevoegde foto">
+            </div>
+            <div class="zoom-hint" id="photoZoomHint">Knijp met 2 vingers om te zoomen (1,0×) • Dubbeltik om te resetten</div>
             <div style="display: flex; gap: 10px;">
                 <button type="button" class="danger" id="removePhotoBtn" style="flex: 1;">Verwijder foto</button>
                 <button type="button" class="secondary" id="closePhotoPreviewBtn" style="flex: 1;">Sluiten</button>
@@ -686,6 +720,15 @@
     let draggedItemType = null;
     let photoTargetItemIndex = null;
     let previewPhotoItemIndex = null;
+
+    let zoomScale = 1;
+    let panX = 0;
+    let panY = 0;
+    let pinchStartDistance = 0;
+    let pinchStartScale = 1;
+    let panStartX = 0;
+    let panStartY = 0;
+    let lastTapTime = 0;
 
     function getStorageUsageKB(serializedString) {
         const bytes = new Blob([serializedString]).size;
@@ -1840,8 +1883,8 @@
             const img = new Image();
             img.onload = function() {
                 const canvas = document.createElement('canvas');
-                // Foto maximaal 240px breed met behoud van beeldverhouding
-                const maxWidth = 240;
+                // Foto maximaal 350px breed met behoud van beeldverhouding
+                const maxWidth = 350;
                 let width = img.width;
                 let height = img.height;
 
@@ -1855,7 +1898,7 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.55);
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
                 list.items[photoTargetItemIndex].photo = compressedDataUrl;
                 photoTargetItemIndex = null;
                 saveToStorage();
@@ -1866,6 +1909,95 @@
         reader.readAsDataURL(file);
     }
 
+    function applyPhotoTransform() {
+        const img = document.getElementById('photoPreviewImg');
+        const hint = document.getElementById('photoZoomHint');
+        if (!img) return;
+        const maxPan = (zoomScale - 1) * 110;
+        panX = Math.max(-maxPan, Math.min(maxPan, panX));
+        panY = Math.max(-maxPan, Math.min(maxPan, panY));
+        img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+        if (hint) {
+            hint.innerText = `Knijp met 2 vingers om te zoomen (${zoomScale.toFixed(1).replace('.', ',')}×) • Dubbeltik om te resetten`;
+        }
+    }
+
+    function resetPhotoTransform() {
+        zoomScale = 1;
+        panX = 0;
+        panY = 0;
+        pinchStartDistance = 0;
+        pinchStartScale = 1;
+        applyPhotoTransform();
+    }
+
+    function getTouchDistance(touchA, touchB) {
+        const dx = touchA.clientX - touchB.clientX;
+        const dy = touchA.clientY - touchB.clientY;
+        return Math.hypot(dx, dy);
+    }
+
+    function setupPhotoPinchZoom() {
+        const stage = document.getElementById('photoZoomStage');
+        if (!stage) return;
+
+        stage.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                pinchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                pinchStartScale = zoomScale;
+            } else if (e.touches.length === 1) {
+                const now = Date.now();
+                if (now - lastTapTime < 280) {
+                    e.preventDefault();
+                    if (zoomScale > 1) {
+                        resetPhotoTransform();
+                    } else {
+                        zoomScale = 2.2;
+                        applyPhotoTransform();
+                    }
+                    lastTapTime = 0;
+                    return;
+                }
+                lastTapTime = now;
+                panStartX = e.touches[0].clientX - panX;
+                panStartY = e.touches[0].clientY - panY;
+            }
+        }, { passive: false });
+
+        stage.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const dist = getTouchDistance(e.touches[0], e.touches[1]);
+                if (pinchStartDistance > 0) {
+                    const nextScale = pinchStartScale * (dist / pinchStartDistance);
+                    zoomScale = Math.max(1, Math.min(4, nextScale));
+                    if (zoomScale === 1) {
+                        panX = 0;
+                        panY = 0;
+                    }
+                    applyPhotoTransform();
+                }
+            } else if (e.touches.length === 1 && zoomScale > 1) {
+                e.preventDefault();
+                panX = e.touches[0].clientX - panStartX;
+                panY = e.touches[0].clientY - panStartY;
+                applyPhotoTransform();
+            }
+        }, { passive: false });
+
+        stage.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                pinchStartDistance = 0;
+                pinchStartScale = zoomScale;
+            }
+            if (e.touches.length === 1 && zoomScale > 1) {
+                panStartX = e.touches[0].clientX - panX;
+                panStartY = e.touches[0].clientY - panY;
+            }
+        }, { passive: true });
+    }
+
     function openPhotoPreview(index) {
         const list = appData.lists.find(l => l.id === activeListId);
         if (!list || !list.items[index] || !list.items[index].photo) return;
@@ -1873,12 +2005,14 @@
         previewPhotoItemIndex = index;
         document.getElementById('photoPreviewImg').src = list.items[index].photo;
         document.getElementById('removePhotoBtn').style.display = (list.status === 'openstaand') ? 'block' : 'none';
+        resetPhotoTransform();
         document.getElementById('photoPreviewModalOverlay').style.display = 'flex';
     }
 
     function closePhotoPreview() {
         document.getElementById('photoPreviewModalOverlay').style.display = 'none';
         previewPhotoItemIndex = null;
+        resetPhotoTransform();
     }
 
     function removePhotoFromItem() {
@@ -1998,6 +2132,7 @@
         document.getElementById('itemPhotoInput').addEventListener('change', handlePhotoFileSelected);
         document.getElementById('closePhotoPreviewBtn').addEventListener('click', closePhotoPreview);
         document.getElementById('removePhotoBtn').addEventListener('click', removePhotoFromItem);
+        setupPhotoPinchZoom();
         
         document.getElementById('backToHomeBtn').addEventListener('click', () => {
             activeFolderId = null;
