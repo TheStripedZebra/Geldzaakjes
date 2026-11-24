@@ -139,6 +139,16 @@
             box-shadow: none;
         }
 
+        button.photo-btn {
+            background: rgba(139, 92, 246, 0.18);
+            color: #c4b5fd;
+            border: 1px solid rgba(139, 92, 246, 0.35);
+            box-shadow: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         input[type="text"], input[type="number"] {
             width: 100%;
             padding: 12px 16px;
@@ -173,6 +183,41 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
+        }
+
+        .item-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1px solid var(--card-border);
+            flex-shrink: 0;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .item-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 6px;
+        }
+
+        .list-created-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        #inputSection {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--card-bg);
+            padding-bottom: 10px;
+            margin-bottom: 6px;
+            flex-shrink: 0;
         }
 
         .scrollable-list {
@@ -371,7 +416,7 @@
             border-bottom: none;
         }
 
-        #modalOverlay, #moveModalOverlay, #inputModalOverlay, #editListModalOverlay {
+        #modalOverlay, #moveModalOverlay, #inputModalOverlay, #editListModalOverlay, #photoPreviewModalOverlay {
             display: none;
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -385,7 +430,7 @@
         }
 
         @media (min-width: 500px) {
-            #modalOverlay, #moveModalOverlay, #inputModalOverlay, #editListModalOverlay {
+            #modalOverlay, #moveModalOverlay, #inputModalOverlay, #editListModalOverlay, #photoPreviewModalOverlay {
                 border-radius: 24px;
             }
         }
@@ -463,7 +508,7 @@
     </div>
 
     <div id="detailScreen" class="screen">
-        <div style="display: flex; flex-direction: column; margin-bottom: 15px; gap: 8px;">
+        <div style="display: flex; flex-direction: column; margin-bottom: 10px; gap: 8px; flex-shrink: 0;">
             <h2 id="currentListTitle" style="margin: 0; font-size: 22px;">Lijst</h2>
             <div style="display: flex; align-items: flex-start; justify-content: space-between;">
                 <button type="button" class="secondary" id="backToFolderBtn" style="padding: 8px 14px; font-size: 14px;">← Terug</button>
@@ -474,11 +519,13 @@
             </div>
         </div>
 
-        <div id="inputSection" style="margin-bottom: 10px; flex-shrink: 0;">
+        <div id="inputSection">
             <input type="text" id="itemDescription" placeholder="Omschrijving (bijv. Supermarkt)">
             <input type="number" id="amountInput" step="0.01" placeholder="Bedrag in € (bijv. 12.50)">
             <button type="button" id="addAmountBtn" style="width: 100%;">Bedrag Toevoegen</button>
         </div>
+
+        <input type="file" id="itemPhotoInput" accept="image/*" style="display: none;">
 
         <div class="scrollable-list" id="amountsContainer"></div>
 
@@ -542,6 +589,17 @@
             </div>
         </div>
     </div>
+
+    <div id="photoPreviewModalOverlay">
+        <div class="modal-box" style="text-align: center;">
+            <h2 style="margin-bottom: 12px;">Foto bij item</h2>
+            <img id="photoPreviewImg" src="" alt="Bijgevoegde foto" style="max-width: 100%; max-height: 260px; border-radius: 12px; object-fit: contain; margin-bottom: 16px; border: 1px solid var(--card-border);">
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="danger" id="removePhotoBtn" style="flex: 1;">Verwijder foto</button>
+                <button type="button" class="secondary" id="closePhotoPreviewBtn" style="flex: 1;">Sluiten</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -566,6 +624,15 @@
 
     const STORAGE_KEY = 'bedragLijsten_vaste_data';
 
+    function formatDutchDate(dateInput) {
+        const d = dateInput ? new Date(dateInput) : new Date();
+        if (isNaN(d.getTime())) return '';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
@@ -585,7 +652,15 @@
                 if (f.parentId === undefined) f.parentId = null;
                 if (f.id === 'archief' || f.id === 'prullenbak') f.isPermanent = true;
             });
-            appData.lists.forEach(l => { if (!l.color) l.color = '#38bdf8'; });
+            appData.lists.forEach(l => {
+                if (!l.color) l.color = '#38bdf8';
+                if (!l.createdAt) l.createdAt = formatDutchDate();
+                if (Array.isArray(l.items)) {
+                    l.items.forEach(item => {
+                        if (!item.createdAt) item.createdAt = l.createdAt || formatDutchDate();
+                    });
+                }
+            });
         }
     } catch (e) {
         console.error("Fout bij laden opslag:", e);
@@ -600,17 +675,28 @@
     let inputModalMode = null;
     let draggedItemId = null;
     let draggedItemType = null;
+    let photoTargetItemIndex = null;
+    let previewPhotoItemIndex = null;
+
+    function getStorageUsageKB(serializedString) {
+        const bytes = new Blob([serializedString]).size;
+        return (bytes / 1024).toFixed(1);
+    }
 
     function saveToStorage() {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            const serialized = JSON.stringify(appData);
+            localStorage.setItem(STORAGE_KEY, serialized);
         } catch (e) {
             console.error("Fout bij opslaan:", e);
+            const currentKB = getStorageUsageKB(JSON.stringify(appData));
+            alert(`LocalStorage is vol (~${currentKB} KB gebruikt, grens is meestal ~5 MB). Verwijder oude foto's of gebruik IndexedDB voor grote aantallen foto's.`);
         }
     }
 
     const arrowRightSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
     const arrowDownSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    const cameraIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`;
 
     function renderFolders() {
         const container = document.getElementById('foldersContainer');
@@ -661,6 +747,7 @@
             standaloneLists.forEach(list => {
                 const items = list.items || [];
                 const total = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                const createdStr = list.createdAt || formatDutchDate();
                 
                 let statusClass = 'openstaand';
                 let statusText = 'Openstaand';
@@ -669,7 +756,7 @@
 
                 const listColor = list.color || '#38bdf8';
                 const listSvg = `
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${listColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${listColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px; flex-shrink: 0;">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                         <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -678,8 +765,9 @@
                 `;
 
                 const cardContent = `
-                    <div style="display: flex; align-items: center; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
-                        <strong style="font-size: 16px;">${listSvg}<span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong>
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
+                        <strong style="font-size: 16px; display: flex; align-items: center;">${listSvg}<span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong>
+                        <span class="list-created-date">Aangemaakt op ${escapeHtml(createdStr)}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <div style="cursor: pointer;" class="open-list-target" data-id="${list.id}">
@@ -765,14 +853,12 @@
             </div>
         `;
 
-        // Zonder swipe-wrapper (dus onverwijderbaar en onswipebaar)
         const card = document.createElement('div');
         card.className = 'folder-card';
         card.innerHTML = cardContent;
         card.setAttribute('data-id', folder.id);
         card.setAttribute('data-type', 'folder');
 
-        // Maak wel dropbaar voor lijsten
         card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drag-over'); });
         card.addEventListener('dragleave', () => { card.classList.remove('drag-over'); });
         card.addEventListener('drop', (e) => {
@@ -804,9 +890,11 @@
                 folderLists.forEach(list => {
                     const items = list.items || [];
                     const total = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                    const createdStr = list.createdAt || formatDutchDate();
                     const childContent = `
-                        <div style="display: flex; align-items: center; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
                             <strong style="font-size: 14px;"><span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong>
+                            <span class="list-created-date">Aangemaakt op ${escapeHtml(createdStr)}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <div style="cursor: pointer;" class="open-list-target" data-id="${list.id}">
@@ -1046,17 +1134,19 @@
                 folderLists.forEach(list => {
                     const items = list.items || [];
                     const total = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                    const createdStr = list.createdAt || formatDutchDate();
                     const listColor = list.color || '#38bdf8';
                     const listSvg = `
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${listColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${listColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px; flex-shrink: 0;">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                         </svg>
                     `;
 
                     const childContent = `
-                        <div style="display: flex; align-items: center; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
-                            <strong style="font-size: 14px;">${listSvg}<span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong>
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
+                            <strong style="font-size: 14px; display: flex; align-items: center;">${listSvg}<span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong>
+                            <span class="list-created-date">Aangemaakt op ${escapeHtml(createdStr)}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <div style="cursor: pointer;" class="open-list-target" data-id="${list.id}">
@@ -1357,6 +1447,7 @@
                 name: name,
                 folderId: (activeFolderId === 'prullenbak') ? null : (activeFolderId || null),
                 color: selectedColorHex,
+                createdAt: formatDutchDate(),
                 items: [],
                 status: activeFolderId === 'archief' ? 'archief' : 'openstaand'
             };
@@ -1515,6 +1606,7 @@
         folderLists.forEach(list => {
             const items = list.items || [];
             const total = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const createdStr = list.createdAt || formatDutchDate();
             
             let statusClass = 'openstaand';
             let statusText = 'Openstaand';
@@ -1523,7 +1615,7 @@
 
             const listColor = list.color || '#38bdf8';
             const listSvg = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${listColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${listColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px; flex-shrink: 0;">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
                     <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -1532,8 +1624,9 @@
             `;
 
             const cardContent = `
-                <div style="display: flex; align-items: center; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
-                    <strong style="font-size: 16px;">${listSvg}<span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong>
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; cursor: pointer; width: 100%;" class="open-list-target" data-id="${list.id}">
+                    <strong style="font-size: 16px; display: flex; align-items: center;">${listSvg}<span style="color: var(--text-main);">${escapeHtml(list.name || 'Naamloze lijst')}</span></strong>
+                    <span class="list-created-date">Aangemaakt op ${escapeHtml(createdStr)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <div style="cursor: pointer;" class="open-list-target" data-id="${list.id}">
@@ -1654,13 +1747,19 @@
         list.items.forEach((item, index) => {
             const amt = parseFloat(item.amount) || 0;
             total += amt;
+            const itemDate = item.createdAt || list.createdAt || formatDutchDate();
             const itemCard = document.createElement('div');
             itemCard.className = 'list-item-card';
-            
+
+            const photoHtml = item.photo
+                ? `<img src="${item.photo}" alt="${escapeHtml(item.desc)}" class="item-thumb" data-index="${index}" title="Tik om foto te bekijken">`
+                : '';
+
             let actionButtonsHtml = '';
             if (isEditable) {
                 actionButtonsHtml = `
-                    <div style="display: flex; gap: 6px;">
+                    <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                        <button type="button" class="photo-btn photo-upload-btn" data-index="${index}" style="padding: 6px 9px; font-size: 12px;" title="Foto toevoegen">${cameraIconSvg}</button>
                         <button type="button" class="warning edit-btn" data-index="${index}" style="padding: 6px 10px; font-size: 12px;">Bewerk</button>
                         <button type="button" class="danger delete-btn" data-index="${index}" style="padding: 6px 10px; font-size: 12px;">Wis</button>
                     </div>
@@ -1668,25 +1767,107 @@
             }
 
             itemCard.innerHTML = `
-                <div style="overflow: hidden; padding-right: 10px;">
-                    <strong style="font-size: 15px;">${escapeHtml(item.desc)}</strong><br>
-                    <span style="color: #38bdf8; font-weight: 600;">€ ${amt.toFixed(2).replace('.', ',')}</span>
+                <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
+                    ${photoHtml}
+                    <div style="overflow: hidden;">
+                        <strong style="font-size: 15px;">${escapeHtml(item.desc)}</strong><span class="item-date">${escapeHtml(itemDate)}</span><br>
+                        <span style="color: #38bdf8; font-weight: 600;">€ ${amt.toFixed(2).replace('.', ',')}</span>
+                    </div>
                 </div>
                 ${actionButtonsHtml}
             `;
             container.appendChild(itemCard);
         });
 
+        container.querySelectorAll('.item-thumb').forEach(img => {
+            img.addEventListener('click', (e) => {
+                openPhotoPreview(parseInt(e.currentTarget.getAttribute('data-index')));
+            });
+        });
+
         if (isEditable) {
+            container.querySelectorAll('.photo-upload-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    photoTargetItemIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+                    document.getElementById('itemPhotoInput').value = '';
+                    document.getElementById('itemPhotoInput').click();
+                });
+            });
             container.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => editItem(parseInt(e.target.getAttribute('data-index'))));
+                btn.addEventListener('click', (e) => editItem(parseInt(e.currentTarget.getAttribute('data-index'))));
             });
             container.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => removeItem(parseInt(e.target.getAttribute('data-index'))));
+                btn.addEventListener('click', (e) => removeItem(parseInt(e.currentTarget.getAttribute('data-index'))));
             });
         }
 
         document.getElementById('totalAmount').innerText = '€ ' + total.toFixed(2).replace('.', ',');
+    }
+
+    function handlePhotoFileSelected(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file || photoTargetItemIndex === null) return;
+
+        const list = appData.lists.find(l => l.id === activeListId);
+        if (!list || !list.items[photoTargetItemIndex]) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                // Extra zuinige resolutie & compressie voor minimale opslag in localStorage
+                const maxDim = 480;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height && width > maxDim) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else if (height > maxDim) {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.55);
+                list.items[photoTargetItemIndex].photo = compressedDataUrl;
+                photoTargetItemIndex = null;
+                saveToStorage();
+                renderAmounts();
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function openPhotoPreview(index) {
+        const list = appData.lists.find(l => l.id === activeListId);
+        if (!list || !list.items[index] || !list.items[index].photo) return;
+
+        previewPhotoItemIndex = index;
+        document.getElementById('photoPreviewImg').src = list.items[index].photo;
+        document.getElementById('removePhotoBtn').style.display = (list.status === 'openstaand') ? 'block' : 'none';
+        document.getElementById('photoPreviewModalOverlay').style.display = 'flex';
+    }
+
+    function closePhotoPreview() {
+        document.getElementById('photoPreviewModalOverlay').style.display = 'none';
+        previewPhotoItemIndex = null;
+    }
+
+    function removePhotoFromItem() {
+        const list = appData.lists.find(l => l.id === activeListId);
+        if (!list || previewPhotoItemIndex === null || !list.items[previewPhotoItemIndex]) return;
+
+        delete list.items[previewPhotoItemIndex].photo;
+        saveToStorage();
+        closePhotoPreview();
+        renderAmounts();
     }
 
     function addAmount() {
@@ -1700,7 +1881,11 @@
 
         if (isNaN(val) || val <= 0) { alert('Voer een geldig bedrag in.'); return; }
 
-        list.items.push({ desc: desc, amount: val });
+        list.items.push({
+            desc: desc,
+            amount: val,
+            createdAt: formatDutchDate()
+        });
         descInput.value = '';
         amountInput.value = '';
         saveToStorage();
@@ -1721,7 +1906,11 @@
         const newAmount = parseFloat(newAmountStr.replace(',', '.'));
         if (isNaN(newAmount) || newAmount <= 0) { alert('Ongeldig bedrag ingevoerd.'); return; }
 
-        list.items[index] = { desc: newDesc.trim() || 'Naamloos', amount: newAmount };
+        list.items[index] = {
+            ...currentItem,
+            desc: newDesc.trim() || 'Naamloos',
+            amount: newAmount
+        };
         saveToStorage();
         renderAmounts();
     }
@@ -1785,6 +1974,9 @@
         document.getElementById('editListCancelBtn').addEventListener('click', closeEditListModal);
 
         document.getElementById('addAmountBtn').addEventListener('click', addAmount);
+        document.getElementById('itemPhotoInput').addEventListener('change', handlePhotoFileSelected);
+        document.getElementById('closePhotoPreviewBtn').addEventListener('click', closePhotoPreview);
+        document.getElementById('removePhotoBtn').addEventListener('click', removePhotoFromItem);
         
         document.getElementById('backToHomeBtn').addEventListener('click', () => {
             activeFolderId = null;
