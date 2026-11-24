@@ -211,13 +211,9 @@
         }
 
         #inputSection {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background: var(--card-bg);
-            padding-bottom: 10px;
-            margin-bottom: 6px;
-            flex-shrink: 0;
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--card-border);
         }
 
         .scrollable-list {
@@ -242,6 +238,16 @@
             border-radius: 14px;
             margin-bottom: 15px;
             align-items: center;
+            flex-shrink: 0;
+        }
+
+        .storage-footer {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            padding-top: 10px;
+            margin-top: 4px;
+            border-top: 1px solid var(--card-border);
             flex-shrink: 0;
         }
 
@@ -519,15 +525,16 @@
             </div>
         </div>
 
-        <div id="inputSection">
-            <input type="text" id="itemDescription" placeholder="Omschrijving (bijv. Supermarkt)">
-            <input type="number" id="amountInput" step="0.01" placeholder="Bedrag in € (bijv. 12.50)">
-            <button type="button" id="addAmountBtn" style="width: 100%;">Bedrag Toevoegen</button>
-        </div>
-
         <input type="file" id="itemPhotoInput" accept="image/*" style="display: none;">
 
-        <div class="scrollable-list" id="amountsContainer"></div>
+        <div class="scrollable-list" id="detailScrollContainer">
+            <div id="inputSection">
+                <input type="text" id="itemDescription" placeholder="Omschrijving (bijv. Supermarkt)">
+                <input type="number" id="amountInput" step="0.01" placeholder="Bedrag in € (bijv. 12.50)">
+                <button type="button" id="addAmountBtn" style="width: 100%;">Bedrag Toevoegen</button>
+            </div>
+            <div id="amountsContainer"></div>
+        </div>
 
         <div class="total-section">
             <span style="color: var(--text-muted); font-size: 15px;">Totaalbedrag:</span>
@@ -536,6 +543,8 @@
 
         <div class="actions-bottom" id="actionButtonsContainer"></div>
     </div>
+
+    <div class="storage-footer" id="storageIndicator">Opslag gebruikt: 0,0 KB / ~5 MB</div>
 
     <div id="inputModalOverlay">
         <div class="modal-box">
@@ -683,13 +692,28 @@
         return (bytes / 1024).toFixed(1);
     }
 
+    function updateStorageIndicator(serializedString) {
+        const indicator = document.getElementById('storageIndicator');
+        if (!indicator) return;
+        const dataStr = serializedString || localStorage.getItem(STORAGE_KEY) || JSON.stringify(appData);
+        const bytes = new Blob([dataStr]).size;
+        const approxMaxBytes = 5 * 1024 * 1024;
+        const pct = Math.min(100, ((bytes / approxMaxBytes) * 100)).toFixed(1);
+        const formattedSize = bytes >= 1024 * 1024
+            ? `${(bytes / (1024 * 1024)).toFixed(2).replace('.', ',')} MB`
+            : `${(bytes / 1024).toFixed(1).replace('.', ',')} KB`;
+        indicator.innerText = `Opslag gebruikt: ${formattedSize} / ~5 MB (${pct}%)`;
+    }
+
     function saveToStorage() {
         try {
             const serialized = JSON.stringify(appData);
             localStorage.setItem(STORAGE_KEY, serialized);
+            updateStorageIndicator(serialized);
         } catch (e) {
             console.error("Fout bij opslaan:", e);
             const currentKB = getStorageUsageKB(JSON.stringify(appData));
+            updateStorageIndicator(JSON.stringify(appData));
             alert(`LocalStorage is vol (~${currentKB} KB gebruikt, grens is meestal ~5 MB). Verwijder oude foto's of gebruik IndexedDB voor grote aantallen foto's.`);
         }
     }
@@ -1816,17 +1840,14 @@
             const img = new Image();
             img.onload = function() {
                 const canvas = document.createElement('canvas');
-                // Extra zuinige resolutie & compressie voor minimale opslag in localStorage
-                const maxDim = 480;
+                // Foto maximaal 240px breed met behoud van beeldverhouding
+                const maxWidth = 240;
                 let width = img.width;
                 let height = img.height;
 
-                if (width > height && width > maxDim) {
-                    height = Math.round((height * maxDim) / width);
-                    width = maxDim;
-                } else if (height > maxDim) {
-                    width = Math.round((width * maxDim) / height);
-                    height = maxDim;
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
                 }
 
                 canvas.width = width;
@@ -1990,10 +2011,12 @@
         document.getElementById('modalCancelBtn').addEventListener('click', closeEditModal);
 
         renderFolders();
+        updateStorageIndicator();
     });
 
     window.onload = function() {
         renderFolders();
+        updateStorageIndicator();
     };
 </script>
 
